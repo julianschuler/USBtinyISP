@@ -31,7 +31,8 @@ main.hex:
 
 all:		main.hex
 
-clean:		rm -f main.elf *.o tags *.sch~ gschem.log
+clean:
+			rm -f main.elf *.o tags *.sch~ gschem.log
 
 clobber:	clean
 			rm -f main.hex
@@ -52,7 +53,8 @@ disasm:		main.elf
 flash:		main.hex
 			$(FLASH_CMD)
 
-fuses:		$(FUSES_CMD)
+fuses:
+			$(FUSES_CMD)
 
 crc.o:		$(USBTINY)/crc.S $(USBTINY)/def.h usbtiny.h
 			$(COMPILE.c) $(USBTINY)/crc.S

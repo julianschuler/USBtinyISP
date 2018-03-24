@@ -276,7 +276,7 @@ static void usb_receive(byte_t* data, byte_t rx_len) {
 				data[0] = 1;			// return bConfigurationValue
 				len = 1;
 			}
-			else if (data[1] == 10) {}	// GET_INTERFACE
+			else if (data[1] == 10) {	// GET_INTERFACE
 				data[0] = 0;
 				len = 1;
 			}
@@ -299,7 +299,7 @@ static void usb_receive(byte_t* data, byte_t rx_len) {
 		usb_tx_data = data;
 	}
 	#if	USBTINY_CALLBACK_OUT
-	else if	(rx_len > 0) {		// usb_rx_token == USB_PID_OUT
+	else if (rx_len > 0) {		// usb_rx_token == USB_PID_OUT
 		usb_out(data, rx_len);
 	}
 	#endif
