@@ -26,6 +26,7 @@
 // Public License as published by the Free Software Foundation.
 // ======================================================================
 
+
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include "def.h"
@@ -33,10 +34,10 @@
 
 #define	LE(word)			(word) & 0xff, (word) >> 8
 
+
 // ----------------------------------------------------------------------
 // typedefs
 // ----------------------------------------------------------------------
-
 #if	USBTINY_CALLBACK_IN == 2
 typedef	uint_t		txlen_t;
 #else
@@ -46,9 +47,7 @@ typedef	byte_t		txlen_t;
 // ----------------------------------------------------------------------
 // USB constants
 // ----------------------------------------------------------------------
-
-enum
-{
+enum {
 	DESCRIPTOR_TYPE_DEVICE = 1,
 	DESCRIPTOR_TYPE_CONFIGURATION,
 	DESCRIPTOR_TYPE_STRING,
@@ -59,105 +58,97 @@ enum
 // ----------------------------------------------------------------------
 // Interrupt handler interface
 // ----------------------------------------------------------------------
-
 #if	USBTINY_NO_DATA
-byte_t	tx_ack;				// ACK packet
-byte_t	tx_nak;				// NAK packet
+	byte_t	tx_ack;						// ACK packet
+	byte_t	tx_nak;						// NAK packet
 #else
-byte_t	tx_ack = USB_PID_ACK;		// ACK packet
-byte_t	tx_nak = USB_PID_NAK;		// NAK packet
+	byte_t	tx_ack = USB_PID_ACK;		// ACK packet
+	byte_t	tx_nak = USB_PID_NAK;		// NAK packet
 #endif
 
 byte_t	usb_rx_buf[2*USB_BUFSIZE];	// two input buffers
-byte_t	usb_rx_off;			// buffer offset: 0 or USB_BUFSIZE
-byte_t	usb_rx_len;			// buffer size, 0 means empty
-byte_t	usb_rx_token;			// PID of token packet: SETUP or OUT
+byte_t	usb_rx_off;					// buffer offset: 0 or USB_BUFSIZE
+byte_t	usb_rx_len;					// buffer size, 0 means empty
+byte_t	usb_rx_token;				// PID of token packet: SETUP or OUT
 
 byte_t	usb_tx_buf[USB_BUFSIZE];	// output buffer
-byte_t	usb_tx_len;			// output buffer size, 0 means empty
+byte_t	usb_tx_len;					// output buffer size, 0 means empty
 
-byte_t	usb_address;			// assigned device address
-byte_t	usb_new_address;		// new device address
+byte_t	usb_address;				// assigned device address
+byte_t	usb_new_address;			// new device address
 
 // ----------------------------------------------------------------------
 // Local data
 // ----------------------------------------------------------------------
-
-enum
-{
-	TX_STATE_IDLE = 0,		// transmitter idle
-	TX_STATE_RAM,			// usb_tx_data is a RAM address
-	TX_STATE_ROM,			// usb_tx_data is a ROM address
-	TX_STATE_CALLBACK,		// call usb_in() to obtain transmit data
+enum {
+	TX_STATE_IDLE = 0,				// transmitter idle
+	TX_STATE_RAM,					// usb_tx_data is a RAM address
+	TX_STATE_ROM,					// usb_tx_data is a ROM address
+	TX_STATE_CALLBACK,				// call usb_in() to obtain transmit data
 };
 
-static	byte_t	usb_tx_state;		// TX_STATE_*, see enum above
-static	txlen_t	usb_tx_total;		// total transmit size
-static	byte_t*	usb_tx_data;		// pointer to data to transmit
+static byte_t usb_tx_state;			// TX_STATE_*, see enum above
+static txlen_t usb_tx_total;		// total transmit size
+static byte_t* usb_tx_data;			// pointer to data to transmit
 
 #if	defined USBTINY_VENDOR_NAME
-struct
-{
-	byte_t	length;
-	byte_t	type;
-	int	string[sizeof(USBTINY_VENDOR_NAME)-1];
-}	const	string_vendor PROGMEM =
-{
-	2 * sizeof(USBTINY_VENDOR_NAME),
-	DESCRIPTOR_TYPE_STRING,
-	{ CAT2(L, USBTINY_VENDOR_NAME) }
-};
-#  define	VENDOR_NAME_ID	1
+	struct {
+		byte_t	length;
+		byte_t	type;
+		int	string[sizeof(USBTINY_VENDOR_NAME)-1];
+	}
+	const string_vendor PROGMEM = {
+		2 * sizeof(USBTINY_VENDOR_NAME),
+		DESCRIPTOR_TYPE_STRING,
+		{CAT2(L, USBTINY_VENDOR_NAME)}
+	};
+	#define VENDOR_NAME_ID	1
 #else
-#  define	VENDOR_NAME_ID	0
+	#define VENDOR_NAME_ID	0
 #endif
 
 #if	defined USBTINY_DEVICE_NAME
-struct
-{
-	byte_t	length;
-	byte_t	type;
-	int	string[sizeof(USBTINY_DEVICE_NAME)-1];
-}	const	string_device PROGMEM =
-{
+struct {
+	byte_t length;
+	byte_t type;
+	int string[sizeof(USBTINY_DEVICE_NAME)-1];
+}
+const string_device PROGMEM = {
 	2 * sizeof(USBTINY_DEVICE_NAME),
 	DESCRIPTOR_TYPE_STRING,
-	{ CAT2(L, USBTINY_DEVICE_NAME) }
+	{CAT2(L, USBTINY_DEVICE_NAME)}
 };
-#  define	DEVICE_NAME_ID	2
+	#define DEVICE_NAME_ID	2
 #else
-#  define	DEVICE_NAME_ID	0
+	#define DEVICE_NAME_ID	0
 #endif
 
 #if	defined USBTINY_SERIAL
-struct
-{
-	byte_t	length;
-	byte_t	type;
-	int	string[sizeof(USBTINY_SERIAL)-1];
-}	const	string_serial PROGMEM =
-{
-	2 * sizeof(USBTINY_SERIAL),
-	DESCRIPTOR_TYPE_STRING,
-	{ CAT2(L, USBTINY_SERIAL) }
-};
-#  define	SERIAL_ID	3
+	struct {
+		byte_t	length;
+		byte_t	type;
+		int	string[sizeof(USBTINY_SERIAL)-1];
+	}
+	const string_serial PROGMEM = {
+		2 * sizeof(USBTINY_SERIAL),
+		DESCRIPTOR_TYPE_STRING,
+		{ CAT2(L, USBTINY_SERIAL) }
+	};
+	#define SERIAL_ID	3
 #else
-#  define	SERIAL_ID	0
+	#define	SERIAL_ID	0
 #endif
 
 #if	VENDOR_NAME_ID || DEVICE_NAME_ID || SERIAL_ID
-static	byte_t	const	string_langid [] PROGMEM =
-{
-	4,				// bLength
-	DESCRIPTOR_TYPE_STRING,		// bDescriptorType (string)
-	LE(0x0409),			// wLANGID[0] (American English)
-};
+	static byte_t const string_langid [] PROGMEM = {
+		4,				// bLength
+		DESCRIPTOR_TYPE_STRING,		// bDescriptorType (string)
+		LE(0x0409),			// wLANGID[0] (American English)
+	};
 #endif
 
 // Device Descriptor
-static	byte_t	const	descr_device [18] PROGMEM =
-{
+static const byte_t descr_device[18] PROGMEM = {
 	18,				// bLength
 	DESCRIPTOR_TYPE_DEVICE,		// bDescriptorType
 	LE(0x0101),			// bcdUSB
@@ -175,8 +166,7 @@ static	byte_t	const	descr_device [18] PROGMEM =
 };
 
 // Configuration Descriptor
-static	byte_t	const	descr_config [] PROGMEM =
-{
+static const byte_t descr_config[] PROGMEM = {
 	9,				// bLength
 	DESCRIPTOR_TYPE_CONFIGURATION,	// bDescriptorType
 	LE(9+9+7*USBTINY_ENDPOINT),	// wTotalLength
@@ -211,8 +201,7 @@ static	byte_t	const	descr_config [] PROGMEM =
 // ----------------------------------------------------------------------
 // Inspect an incoming packet.
 // ----------------------------------------------------------------------
-static	void	usb_receive ( byte_t* data, byte_t rx_len )
-{
+static void usb_receive(byte_t* data, byte_t rx_len) {
 	byte_t	len;
 	byte_t	type;
 	txlen_t	limit;
@@ -220,119 +209,100 @@ static	void	usb_receive ( byte_t* data, byte_t rx_len )
 	usb_tx_state = TX_STATE_RAM;
 	len = 0;
 	limit = 0;
-	if	( usb_rx_token == USB_PID_SETUP )
-	{
-#if	USBTINY_CALLBACK_IN == 2
-		limit = * (uint_t*) & data[6];
-#else
-		limit = data[6];
-		if	( data[7] )
-		{
-			limit = 255;
-		}
-#endif
+	if (usb_rx_token == USB_PID_SETUP) {
+		#if	USBTINY_CALLBACK_IN == 2
+			limit = * (uint_t*) & data[6];
+		#else
+			limit = data[6];
+			if (data[7]) {
+				limit = 255;
+			}
+		#endif
 		type = data[0] & 0x60;
-		if	( type == 0x00 )
-		{	// Standard request
-			if	( data[1] == 0 )	// GET_STATUS
-			{
+		if	(type == 0x00 ) {				// Standard request
+			if	(data[1] == 0) {			// GET_STATUS
 				len = 2;
-#if	USBTINY_MAX_POWER == 0
-				data[0] = (data[0] == 0x80);
-#else
-				data[0] = 0;
-#endif
+				#if	USBTINY_MAX_POWER == 0
+					data[0] = (data[0] == 0x80);
+				#else
+					data[0] = 0;
+				#endif
 				data[1] = 0;
 			}
-			else if	( data[1] == 5 )	// SET_ADDRESS
-			{
+			else if	(data[1] == 5) {			// SET_ADDRESS
 				usb_new_address = data[2];
-#ifdef	USBTINY_USB_OK_LED
-				SET(USBTINY_USB_OK_LED);// LED on
-#endif
+				#ifdef	USBTINY_USB_OK_LED
+					SET(USBTINY_USB_OK_LED);	// LED on
+				#endif
 			}
-			else if	( data[1] == 6 )	// GET_DESCRIPTOR
-			{
+			else if	(data[1] == 6) {			// GET_DESCRIPTOR
 				usb_tx_state = TX_STATE_ROM;
-				if	( data[3] == 1 )
-				{	// DEVICE
+				if	(data[3] == 1) {			// DEVICE
 					data = (byte_t*) &descr_device;
 					len = sizeof(descr_device);
 				}
-				else if	( data[3] == 2 )
-				{	// CONFIGURATION
+				else if	(data[3] == 2) {		// CONFIGURATION
 					data = (byte_t*) &descr_config;
 					len = sizeof(descr_config);
 				}
-#if	VENDOR_NAME_ID || DEVICE_NAME_ID || SERIAL_ID
-				else if	( data[3] == 3 )
-				{	// STRING
-					if	( data[2] == 0 )
-					{
+				#if	VENDOR_NAME_ID || DEVICE_NAME_ID || SERIAL_ID
+				else if (data[3] == 3) {		// STRING
+					if (data[2] == 0) {
 						data = (byte_t*) &string_langid;
 						len = sizeof(string_langid);
 					}
-#if	VENDOR_NAME_ID
-					else if	( data[2] == VENDOR_NAME_ID )
-					{
+					#if	VENDOR_NAME_ID
+					else if	(data[2] == VENDOR_NAME_ID) {
 						data = (byte_t*) &string_vendor;
 						len = sizeof(string_vendor);
 					}
-#endif
-#if	DEVICE_NAME_ID
-					else if ( data[2] == DEVICE_NAME_ID )
-					{
+					#endif
+					#if	DEVICE_NAME_ID
+					else if (data[2] == DEVICE_NAME_ID) {
 						data = (byte_t*) &string_device;
 						len = sizeof(string_device);
 					}
-#endif
-#if	SERIAL_ID
-					else if ( data[2] == SERIAL_ID )
-					{
+					#endif
+					#if	SERIAL_ID
+					else if (data[2] == SERIAL_ID) {
 						data = (byte_t*) &string_serial;
 						len = sizeof(string_serial);
 					}
-#endif
+					#endif
 				}
-#endif
+				#endif
 			}
-			else if	( data[1] == 8 )	// GET_CONFIGURATION
-			{
-				data[0] = 1;		// return bConfigurationValue
+			else if ( data[1] == 8 ) {	// GET_CONFIGURATION{
+				data[0] = 1;			// return bConfigurationValue
 				len = 1;
 			}
-			else if	( data[1] == 10 )	// GET_INTERFACE
-			{
+			else if (data[1] == 10) {}	// GET_INTERFACE
 				data[0] = 0;
 				len = 1;
 			}
 		}
-		else
-		{	// Class or Vendor request
+		else {							// Class or Vendor request
 			len = usb_setup( data );
-#if	USBTINY_CALLBACK_IN
-			if	( len == 0xff )
-			{
+			#if	USBTINY_CALLBACK_IN
+			if	(len == 0xff) {
 				usb_tx_state = TX_STATE_CALLBACK;
 			}
-#endif
+			#endif
 		}
 		if	(  len < limit
-#if	USBTINY_CALLBACK_IN == 2
-			&& len != 0xff
-#endif
-			)
-		{
+				 #if USBTINY_CALLBACK_IN == 2
+				&& len != 0xff
+				#endif
+						) {
 			limit = len;
 		}
 		usb_tx_data = data;
 	}
-#if	USBTINY_CALLBACK_OUT
-	else if	( rx_len > 0 )
-	{	// usb_rx_token == USB_PID_OUT
-		usb_out( data, rx_len );
+	#if	USBTINY_CALLBACK_OUT
+	else if	(rx_len > 0) {		// usb_rx_token == USB_PID_OUT
+		usb_out(data, rx_len);
 	}
-#endif
+	#endif
 	usb_tx_total  = limit;
 	usb_tx_buf[0] = USB_PID_DATA0;	// next data packet will be DATA1
 }
@@ -340,46 +310,37 @@ static	void	usb_receive ( byte_t* data, byte_t rx_len )
 // ----------------------------------------------------------------------
 // Load the transmit buffer with the next packet.
 // ----------------------------------------------------------------------
-static	void	usb_transmit ( void )
-{
-	byte_t	len;
-	byte_t*	src;
-	byte_t*	dst;
-	byte_t	i;
-	byte_t	b;
+static void usb_transmit() {
+	byte_t len;
+	byte_t* src;
+	byte_t* dst;
+	byte_t i;
+	byte_t b;
 
 	usb_tx_buf[0] ^= (USB_PID_DATA0 ^ USB_PID_DATA1);
-	if	( usb_tx_total > 8 )
-	{
+	if	(usb_tx_total > 8) {
 		len = 8;
 	}
-	else
-	{
+	else {
 		len = (byte_t) usb_tx_total;
 	}
 	dst = usb_tx_buf + 1;
-	if	( len > 0 )
-	{
-#if	USBTINY_CALLBACK_IN
-		if	( usb_tx_state == TX_STATE_CALLBACK )
-		{
+	if	(len > 0) {
+		#if	USBTINY_CALLBACK_IN
+		if	( usb_tx_state == TX_STATE_CALLBACK ) {
 			len = usb_in( dst, len );
 		}
 		else
-#endif
+		#endif
 		{
 			src = usb_tx_data;
-			if	( usb_tx_state == TX_STATE_RAM )
-			{
-				for	( i = 0; i < len; i++ )
-				{
+			if	( usb_tx_state == TX_STATE_RAM ) {
+				for	(i = 0; i < len; i++) {
 					*dst++ = *src++;
 				}
 			}
-			else	// usb_tx_state == TX_STATE_ROM
-			{
-				for	( i = 0; i < len; i++ )
-				{
+			else {		// usb_tx_state == TX_STATE_ROM
+				for	(i = 0; i < len; i++) {
 					b = pgm_read_byte( src );
 					src++;
 					*dst++ = b;
@@ -389,10 +350,9 @@ static	void	usb_transmit ( void )
 		}
 		usb_tx_total -= len;
 	}
-	crc( usb_tx_buf + 1, len );
+	crc(usb_tx_buf + 1, len);
 	usb_tx_len = len + 3;
-	if	( len < 8 )
-	{	// this is the last packet
+	if	(len < 8) {		// this is the last packet
 		usb_tx_state = TX_STATE_IDLE;
 	}
 }
@@ -400,21 +360,20 @@ static	void	usb_transmit ( void )
 // ----------------------------------------------------------------------
 // Initialize the low-level USB driver.
 // ----------------------------------------------------------------------
-extern	void	usb_init ( void )
-{
+extern void usb_init() {
 	USB_INT_CONFIG |= USB_INT_CONFIG_SET;
 	USB_INT_ENABLE |= (1 << USB_INT_ENABLE_BIT);
-#ifdef	USBTINY_USB_OK_LED
+	#ifdef	USBTINY_USB_OK_LED
 	OUTPUT(USBTINY_USB_OK_LED);
-#endif
-#ifdef	USBTINY_DMINUS_PULLUP
+	#endif
+	#ifdef	USBTINY_DMINUS_PULLUP
 	SET(USBTINY_DMINUS_PULLUP);
 	OUTPUT(USBTINY_DMINUS_PULLUP);	// enable pullup on D-
-#endif
-#if	USBTINY_NO_DATA
+	#endif
+	#if	USBTINY_NO_DATA
 	tx_ack = USB_PID_ACK;
 	tx_nak = USB_PID_NAK;
-#endif
+	#endif
 	sei();
 }
 
@@ -424,28 +383,22 @@ extern	void	usb_init ( void )
 // - refill an empty transmit buffer
 // - check for USB bus reset
 // ----------------------------------------------------------------------
-extern	void	usb_poll ( void )
-{
+extern void usb_poll() {
 	byte_t	i;
 
 	// check for incoming USB packets
-	if	( usb_rx_len != 0 )
-	{
+	if	(usb_rx_len != 0) {
 		usb_receive( usb_rx_buf + USB_BUFSIZE - usb_rx_off + 1, usb_rx_len - 3 );
-		usb_tx_len = 0;	// abort pending transmission
-		usb_rx_len = 0;	// accept next packet
+		usb_tx_len = 0;		// abort pending transmission
+		usb_rx_len = 0;		// accept next packet
 	}
 	// refill an empty transmit buffer, when the transmitter is active
-	if	( usb_tx_len == 0 && usb_tx_state != TX_STATE_IDLE )
-	{
+	if (usb_tx_len == 0 && usb_tx_state != TX_STATE_IDLE) {
 		usb_transmit();
 	}
 	// check for USB bus reset
-	for	( i = 10; i > 0 && ! (USB_IN & USB_MASK_DMINUS); i-- )
-	{
-	}
-	if	( i == 0 )
-	{	// SE0 for more than 2.5uS is a reset
+	for (i = 10; i > 0 && !(USB_IN & USB_MASK_DMINUS); i--) {}
+	if	(i == 0) {			// SE0 for more than 2.5uS is a reset
 		usb_new_address = 0;
 		usb_address = 0;
 	}

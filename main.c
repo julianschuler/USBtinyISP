@@ -151,7 +151,7 @@ extern byte_t usb_setup (byte_t data[8]) {
 	// Programming requests
 	if (req == USBTINY_POWERUP) {
 		sck_period = data[2];
-		mask |= LED_MASK;
+		mask |= LED_MASK | SCK_MASK | MOSI_MASK;
 		if (data[4]) {
 			mask |= RESET_MASK;
 		}

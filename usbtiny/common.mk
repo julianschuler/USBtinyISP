@@ -18,6 +18,7 @@
 # Public License as published by the Free Software Foundation.
 # ======================================================================
 
+
 check	= $(shell $(CC) $1 -c -xc /dev/null -o/dev/null 2>/dev/null && echo $1)
 
 CC		= avr-gcc
@@ -30,8 +31,7 @@ main.hex:
 
 all:		main.hex
 
-clean:
-			rm -f main.elf *.o tags *.sch~ gschem.log
+clean:		rm -f main.elf *.o tags *.sch~ gschem.log
 
 clobber:	clean
 			rm -f main.hex
@@ -40,7 +40,7 @@ main.elf:	$(MODULES)
 			$(LINK.o) -o $@ $(MODULES)
 
 main.hex:	main.elf $(USBTINY)/check.py
-			#@python check.py main.elf $(STACK) $(FLASH) $(SRAM)
+			#@python $(USBTINY)/check.py main.elf $(STACK) $(FLASH) $(SRAM)
 			avr-objcopy -j .text -j .data -O ihex main.elf main.hex
 
 check:		main.elf $(USBTINY)/check.py
@@ -52,8 +52,7 @@ disasm:		main.elf
 flash:		main.hex
 			$(FLASH_CMD)
 
-fuses:
-			$(FUSES_CMD)
+fuses:		$(FUSES_CMD)
 
 crc.o:		$(USBTINY)/crc.S $(USBTINY)/def.h usbtiny.h
 			$(COMPILE.c) $(USBTINY)/crc.S

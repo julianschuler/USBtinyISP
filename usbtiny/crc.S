@@ -19,6 +19,7 @@
 ; Public License as published by the Free Software Foundation.
 ; ======================================================================
 
+
 #include "def.h"
 
 #if	USBTINY_FAST_CRC
