@@ -12,10 +12,19 @@
 # FLASH			- flash size (optional)
 # SRAM			- SRAM size (optional)
 #
-# Copyright 2006-2010 Dick Streefland
+# This file is a part of the ATtiny24A based USBtinyISP project
+# by Julian Schuler (https://github.com/julianschuler/usbtinyisp).
 #
-# This is free software, licensed under the terms of the GNU General
-# Public License as published by the Free Software Foundation.
+# It is based on the USBtiny project by Dick Streefland
+# (https://dicks.home.xs4all.nl/avr/usbtiny/index.html)
+#
+# Copyright (C) 2006-2010 Dick Streefland
+# Copyright (C) 2018 Julian Schuler
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 # ======================================================================
 
 

@@ -1,13 +1,20 @@
-// ========================================================================
-// Makefile for USBtinyISP
+// ======================================================================
+// USBtiny Configuration
 //
-// This file is a part of the ATtiny24 based USBtinyISP by Julian Schuler
-// (https://github.com/julianschuler/usbtinyisp).
+// This file is a part of the ATtiny24A based USBtinyISP project
+// by Julian Schuler (https://github.com/julianschuler/usbtinyisp).
 //
 // It is based on the USBtiny project by Dick Streefland
-// (https://dicks.home.xs4all.nl/avr/usbtiny/index.html) and
-// published under the same license (GNU GPLv3, see LICENSE.txt)
-// ========================================================================
+// (https://dicks.home.xs4all.nl/avr/usbtiny/index.html)
+//
+// Copyright (C) 2006-2010 Dick Streefland
+// Copyright (C) 2018 Julian Schuler
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// ======================================================================
 
 
 // The D+ and D- USB signals should be connected to two pins of the same
