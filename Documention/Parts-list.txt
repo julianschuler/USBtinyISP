@@ -1,0 +1,24 @@
+﻿Count	Part name				Package
+-------------------------------------
+1x		ATtiny24A 				SOIC-14
+1x		TLV70233 				SOT-23-5
+2x		AO 3415A				SOT-23
+1x		BC847B					SOT-23
+1x		BC847BS					SOT-363
+1x		BC857BS					SOT-363
+1x		LL4148					MiniMELF
+2x		3.6V Zener diode		MiniMELF
+1x		12MHz crystal			HC49-US
+2x		22pF capacitor			SMD 1206
+1x		100nF capacitor			SMD 1206
+2x		10µF capacitor			SMD 1206
+2x		68Ω resistor			SMD 1206
+5x		1kΩ resistor			SMD 1206
+1x		2.2kΩ resistor			SMD 1206
+3x		10kΩ resistor			SMD 1206
+1x		LED green				SMD 3216 (1206)
+1x		LED red					SMD 3216 (1206)
+1x		USB-A male plug			SMD
+1x		DIP switches 2x			THT
+1x		Shrouded header 6 pin	THT
+
