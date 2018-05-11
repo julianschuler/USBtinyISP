@@ -102,17 +102,17 @@ static void spi(byte_t* cmd, byte_t* res, byte_t n) {
 		r = 0;
 		for ( mask = 0x80; mask; mask >>= 1 ) {
 			if (c & mask) {
-				PORT &= ~MOSI_MASK;		// inverted due to transistor logic
+				PORT |= MOSI_MASK;
 			}
 			delay();
-			PORT &= ~SCK_MASK;			// inverted due to transistor logic
+			PORT |= SCK_MASK;
 			delay();
 			r <<= 1;
 			if (PIN & MISO_MASK) {
 				r++;
 			}
-			PORT |= MOSI_MASK;			// inverted due to transistor logic
-			PORT |= SCK_MASK;			// inverted due to transistor logic
+			PORT &= ~MOSI_MASK;
+			PORT &= ~SCK_MASK;
 		}
 		*res++ = r;
 	}
@@ -149,6 +149,7 @@ extern byte_t usb_setup (byte_t data[8]) {
 		return 8;
 	}
 	if (req == USBTINY_READ) {
+		data[0] = PIN;
 		return 1;
 	}
 	if (req == USBTINY_WRITE || req == USBTINY_CLR || req == USBTINY_SET) {
@@ -159,6 +160,7 @@ extern byte_t usb_setup (byte_t data[8]) {
 	if (req == USBTINY_POWERUP) {
 		sck_period = data[2];
 		mask |= LED_MASK | SCK_MASK | MOSI_MASK;
+		//mask = LED_MASK;
 		if (data[4]) {
 			mask |= RESET_MASK;
 		}
@@ -224,10 +226,10 @@ extern	byte_t	usb_in ( byte_t* data, byte_t len ) {
 // ----------------------------------------------------------------------
 // Handle an OUT packet.
 // ----------------------------------------------------------------------
-extern	void	usb_out ( byte_t* data, byte_t len ) {
-	byte_t	i;
-	uint_t	usec;
-	byte_t	r;
+extern void usb_out ( byte_t* data, byte_t len ) {
+	byte_t i;
+	uint_t usec;
+	byte_t r;
 	
 	for	( i = 0; i < len; i++ ) {
 		cmd[3] = data[i];
@@ -246,7 +248,7 @@ extern	void	usb_out ( byte_t* data, byte_t len ) {
 // ----------------------------------------------------------------------
 // Main
 // ----------------------------------------------------------------------
-extern	int	main ( void ) {
+extern int main ( void ) {
 	usb_init();
 	while (1) {
 		usb_poll();

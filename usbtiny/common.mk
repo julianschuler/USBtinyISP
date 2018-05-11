@@ -59,7 +59,7 @@ check:		main.elf $(USBTINY)/check.py
 disasm:		main.elf
 			avr-objdump -S main.elf
 
-flash:		main.hex
+flash:
 			$(FLASH_CMD)
 
 fuses:

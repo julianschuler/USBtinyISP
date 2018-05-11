@@ -401,5 +401,8 @@ extern void usb_poll() {
 	if	(i == 0) {			// SE0 for more than 2.5uS is a reset
 		usb_new_address = 0;
 		usb_address = 0;
+		#ifdef	USBTINY_USB_OK_LED
+		CLR(USBTINY_USB_OK_LED);	// LED off
+		#endif
 	}
 }
