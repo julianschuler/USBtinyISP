@@ -1,4 +1,4 @@
-﻿Count	Part name				Package
+﻿Qty.	Part name				Package
 -------------------------------------
 1x		ATtiny24A 				SOIC-14
 1x		TLV70233 				SOT-23-5
