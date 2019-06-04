@@ -91,7 +91,7 @@ static byte_t usb_tx_state;			// TX_STATE_*, see enum above
 static txlen_t usb_tx_total;		// total transmit size
 static byte_t* usb_tx_data;			// pointer to data to transmit
 
-#if	defined USBTINY_VENDOR_NAME
+#ifdef USBTINY_VENDOR_NAME
 	struct {
 		byte_t	length;
 		byte_t	type;
@@ -141,51 +141,51 @@ const string_device PROGMEM = {
 
 #if	VENDOR_NAME_ID || DEVICE_NAME_ID || SERIAL_ID
 	static byte_t const string_langid [] PROGMEM = {
-		4,				// bLength
+		4,							// bLength
 		DESCRIPTOR_TYPE_STRING,		// bDescriptorType (string)
-		LE(0x0409),			// wLANGID[0] (American English)
+		LE(0x0409),					// wLANGID[0] (American English)
 	};
 #endif
 
 // Device Descriptor
 static const byte_t descr_device[18] PROGMEM = {
-	18,				// bLength
+	18,							// bLength
 	DESCRIPTOR_TYPE_DEVICE,		// bDescriptorType
-	LE(0x0101),			// bcdUSB
+	LE(0x0101),					// bcdUSB
 	USBTINY_DEVICE_CLASS,		// bDeviceClass
 	USBTINY_DEVICE_SUBCLASS,	// bDeviceSubClass
 	USBTINY_DEVICE_PROTOCOL,	// bDeviceProtocol
-	8,				// bMaxPacketSize0
+	8,							// bMaxPacketSize0
 	LE(USBTINY_VENDOR_ID),		// idVendor
 	LE(USBTINY_DEVICE_ID),		// idProduct
 	LE(USBTINY_DEVICE_VERSION),	// bcdDevice
-	VENDOR_NAME_ID,			// iManufacturer
-	DEVICE_NAME_ID,			// iProduct
-	SERIAL_ID,			// iSerialNumber
-	1,				// bNumConfigurations
+	VENDOR_NAME_ID,				// iManufacturer
+	DEVICE_NAME_ID,				// iProduct
+	SERIAL_ID,					// iSerialNumber
+	1,							// bNumConfigurations
 };
 
 // Configuration Descriptor
 static const byte_t descr_config[] PROGMEM = {
-	9,				// bLength
-	DESCRIPTOR_TYPE_CONFIGURATION,	// bDescriptorType
-	LE(9+9+7*USBTINY_ENDPOINT),	// wTotalLength
-	1,				// bNumInterfaces
-	1,				// bConfigurationValue
-	0,				// iConfiguration
-	(USBTINY_MAX_POWER ? 0x80 : 0xc0), // bmAttributes
-	(USBTINY_MAX_POWER + 1) / 2,	// MaxPower
+	9,									// bLength
+	DESCRIPTOR_TYPE_CONFIGURATION,		// bDescriptorType
+	LE(9+9+7*USBTINY_ENDPOINT),			// wTotalLength
+	1,									// bNumInterfaces
+	1,									// bConfigurationValue
+	0,									// iConfiguration
+	(USBTINY_MAX_POWER ? 0x80 : 0xc0), 	// bmAttributes
+	(USBTINY_MAX_POWER + 1) / 2,		// MaxPower
 
 	// Standard Interface Descriptor
-	9,				// bLength
-	DESCRIPTOR_TYPE_INTERFACE,	// bDescriptorType
-	0,				// bInterfaceNumber
-	0,				// bAlternateSetting
-	USBTINY_ENDPOINT,		// bNumEndpoints
-	USBTINY_INTERFACE_CLASS,	// bInterfaceClass
-	USBTINY_INTERFACE_SUBCLASS,	// bInterfaceSubClass
-	USBTINY_INTERFACE_PROTOCOL,	// bInterfaceProtocol
-	0,				// iInterface
+	9,									// bLength
+	DESCRIPTOR_TYPE_INTERFACE,			// bDescriptorType
+	0,									// bInterfaceNumber
+	0,									// bAlternateSetting
+	USBTINY_ENDPOINT,					// bNumEndpoints
+	USBTINY_INTERFACE_CLASS,			// bInterfaceClass
+	USBTINY_INTERFACE_SUBCLASS,			// bInterfaceSubClass
+	USBTINY_INTERFACE_PROTOCOL,			// bInterfaceProtocol
+	0,									// iInterface
 
 #if	USBTINY_ENDPOINT
 	// Additional Endpoint
@@ -341,7 +341,7 @@ static void usb_transmit() {
 			}
 			else {		// usb_tx_state == TX_STATE_ROM
 				for	(i = 0; i < len; i++) {
-					b = pgm_read_byte( src );
+					b = pgm_read_byte(src);
 					src++;
 					*dst++ = b;
 				}

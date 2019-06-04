@@ -18,8 +18,45 @@
 
 
 #include <avr/io.h>
-#include "def.h"
-#include "usb.h"
+#include <avr/interrupt.h>
+#include <def.h>
+#include <usb.h>
+
+#define USE_OLD_PCB		1	//necessary due to an unintended pin switch between MOSI and SCK, will be removed after a new PCB has been created
+#define USE_USI_SPI		1	//set to 1 to use USI for SPI, limited to DO, DI and USCK pins for MOSI, MISO and SCK
+
+
+// ----------------------------------------------------------------------
+// I/O pins:
+// ----------------------------------------------------------------------
+#define	PORT		PORTA
+#define	DDR			DDRA
+#define	PIN			PINA
+
+#define	LED			PA2		// output
+#define	RESET		PA3		// output
+#define	MISO		PA6		// input
+
+#if USE_OLD_PCB
+#define	MOSI		PA4		// output
+#define	SCK			PA5		// output
+#else
+#define	MOSI		PA5		// output
+#define	SCK			PA4		// output
+#endif
+
+#define	LED_MASK	_BV(LED)
+#define	RESET_MASK	_BV(RESET)
+#define	MOSI_MASK	_BV(MOSI)
+#define	MISO_MASK	_BV(MISO)
+#define	SCK_MASK	_BV(SCK)
+
+
+#if USE_OLD_PCB
+#undef USE_USI_SPI
+#define USE_USI_SPI	 	0	//USI SPI only usable with new PCB
+#endif
+
 
 enum {
 	// Generic requests
@@ -42,37 +79,18 @@ enum {
 	USBTINY_SPI1			// a single SPI command
 };
 
-// ----------------------------------------------------------------------
-// I/O pins:
-// ----------------------------------------------------------------------
-#define	PORT		PORTA
-#define	DDR			DDRA
-#define	PIN			PINA
-
-#define	LED			PA2		// output
-#define	RESET		PA3		// output
-#define	MOSI		PA5		// output
-#define	MISO		PA6		// input
-#define	SCK			PA4		// output
-
-#define	LED_MASK	_BV(LED)
-#define	RESET_MASK	_BV(RESET)
-#define	MOSI_MASK	_BV(MOSI)
-#define	MISO_MASK	_BV(MISO)
-#define	SCK_MASK	_BV(SCK)
-
 
 // ----------------------------------------------------------------------
 // Local data
 // ----------------------------------------------------------------------
-static byte_t		sck_period;	// SCK period in microseconds (1..250)
-static byte_t		poll1;		// first poll byte for write
-static byte_t		poll2;		// second poll byte for write
-static uint_t		address;	// read/write address
-static uint_t		timeout;	// write timeout in usec
-static byte_t		cmd0;		// current read/write command byte
-static byte_t		cmd[4];		// SPI command buffer
-static byte_t		res[4];		// SPI result buffer
+static uint8_t		sck_period;	// SCK period in microseconds (1..250)
+static uint8_t		poll1;		// first poll byte for write
+static uint8_t		poll2;		// second poll byte for write
+static uint16_t		address;	// read/write address
+static uint16_t		timeout;	// write timeout in usec
+static uint8_t		cmd0;		// current read/write command byte
+static uint8_t		cmd[4];		// SPI command buffer
+static uint8_t		res[4];		// SPI result buffer
 
 // ----------------------------------------------------------------------
 // Delay exactly <sck_period> times 0.5 microseconds (6 cycles).
@@ -82,39 +100,60 @@ static inline void delay(void) {
 	asm volatile(
 		"	mov	__tmp_reg__,%0	\n"
 		"0:	rjmp	1f		\n"
-		"1:	nop			\n"
-		"	dec	__tmp_reg__	\n"
+		"1:	dec	__tmp_reg__	\n"
 		"	brne	0b		\n"
 		: : "r" (sck_period) );
 }
 
+
 // ----------------------------------------------------------------------
 // Issue one SPI command.
 // ----------------------------------------------------------------------
-static void spi(byte_t* cmd, byte_t* res, byte_t n) {
-	byte_t	c;
-	byte_t	r;
-	byte_t	mask;
+static void spi(uint8_t* cmd, uint8_t* res, uint8_t n) {
+	uint8_t	c;
+	#if !USE_USI_SPI
+	uint8_t	r;
+	uint8_t	mask;
+	#endif
 	
 	while (n != 0) {
 		n--;
 		c = *cmd++;
+		
+		#if USE_USI_SPI
+		USIDR = c;
+		USISR = 1 << USIOIF;
+
+		while ((USISR & (1<<USIOIF)) == 0) {
+			USICR = (1<<USIWM0) | (1<<USICS1) | (1<<USICLK) | (1<<USITC);
+			delay();
+		}
+
+		*res++ = USIDR;
+		#else
 		r = 0;
-		for ( mask = 0x80; mask; mask >>= 1 ) {
+		//cli();
+		for (mask = 0x80; mask; mask >>= 1) {
 			if (c & mask) {
 				PORT |= MOSI_MASK;
 			}
+			else {
+				PORT &= ~MOSI_MASK;
+			}
 			delay();
 			PORT |= SCK_MASK;
+			//PORT |= LED_MASK;
 			delay();
 			r <<= 1;
 			if (PIN & MISO_MASK) {
 				r++;
 			}
-			PORT &= ~MOSI_MASK;
 			PORT &= ~SCK_MASK;
+			//PORT &= ~LED_MASK;
 		}
 		*res++ = r;
+		//sei();
+		#endif
 	}
 }
 
@@ -122,7 +161,7 @@ static void spi(byte_t* cmd, byte_t* res, byte_t n) {
 // Create and issue a read or write SPI command.
 // ----------------------------------------------------------------------
 static void spi_rw (void) {
-	uint_t	a;
+	uint16_t a;
 	
 	a = address++;
 	if (cmd0 & 0x80) {	// eeprom
@@ -140,9 +179,9 @@ static void spi_rw (void) {
 // ----------------------------------------------------------------------
 // Handle a non-standard SETUP packet.
 // ----------------------------------------------------------------------
-extern byte_t usb_setup (byte_t data[8]) {
-	byte_t req = data[1];
-	byte_t mask = 0;
+extern uint8_t usb_setup (uint8_t data[8]) {
+	uint8_t req = data[1];
+	uint8_t mask;
 	
 	// Generic requests
 	if (req == USBTINY_ECHO) {
@@ -152,15 +191,15 @@ extern byte_t usb_setup (byte_t data[8]) {
 		data[0] = PIN;
 		return 1;
 	}
-	if (req == USBTINY_WRITE || req == USBTINY_CLR || req == USBTINY_SET) {
+	if (req == USBTINY_WRITE || req == USBTINY_CLR || req == USBTINY_SET || req == USBTINY_DDRWRITE) {
 		return 0;
 	}
 	
 	// Programming requests
 	if (req == USBTINY_POWERUP) {
 		sck_period = data[2];
-		mask |= LED_MASK | SCK_MASK | MOSI_MASK;
-		//mask = LED_MASK;
+		mask = 0;
+		mask = LED_MASK;
 		if (data[4]) {
 			mask |= RESET_MASK;
 		}
@@ -168,6 +207,7 @@ extern byte_t usb_setup (byte_t data[8]) {
 		PORT |= mask;
 		return 0;
 	}
+	
 	if (req == USBTINY_POWERDOWN) {
 		DDR  &= ~(LED_MASK | RESET_MASK | SCK_MASK | MOSI_MASK);
 		PORT &= ~(LED_MASK | RESET_MASK | SCK_MASK | MOSI_MASK);
@@ -189,7 +229,7 @@ extern byte_t usb_setup (byte_t data[8]) {
 		poll2 = data[3];
 		return 0;
 	}
-	address = * (uint_t*) & data[4];
+	address = * (uint16_t*) & data[4];
 	if (req == USBTINY_FLASH_READ) {
 		cmd0 = 0x20;
 		return 0xff;	// usb_in() will be called to get the data
@@ -198,7 +238,7 @@ extern byte_t usb_setup (byte_t data[8]) {
 		cmd0 = 0xa0;
 		return 0xff;	// usb_in() will be called to get the data
 	}
-	timeout = * (uint_t*) & data[2];
+	timeout = * (uint16_t*) & data[2];
 	if (req == USBTINY_FLASH_WRITE) {
 		cmd0 = 0x40;
 		return 0;	// data will be received by usb_out()
@@ -213,8 +253,8 @@ extern byte_t usb_setup (byte_t data[8]) {
 // ----------------------------------------------------------------------
 // Handle an IN packet.
 // ----------------------------------------------------------------------
-extern	byte_t	usb_in ( byte_t* data, byte_t len ) {
-	byte_t	i;
+extern	uint8_t	usb_in(uint8_t* data, uint8_t len) {
+	uint8_t	i;
 	
 	for (i = 0; i < len; i++) {
 		spi_rw();
@@ -226,19 +266,19 @@ extern	byte_t	usb_in ( byte_t* data, byte_t len ) {
 // ----------------------------------------------------------------------
 // Handle an OUT packet.
 // ----------------------------------------------------------------------
-extern void usb_out ( byte_t* data, byte_t len ) {
-	byte_t i;
-	uint_t usec;
-	byte_t r;
+extern void usb_out(uint8_t* data, uint8_t len) {
+	uint8_t i;
+	uint16_t usec;
+	uint8_t r;
 	
-	for	( i = 0; i < len; i++ ) {
+	for	(i = 0; i < len; i++) {
 		cmd[3] = data[i];
 		spi_rw();
 		cmd[0] ^= 0x60;	// turn write into read
-		for	(usec = 0; usec < timeout; usec += 32 * sck_period ) {	// when timeout > 0, poll until byte is written
-			spi( cmd, res, 4 );
+		for	(usec = 0; usec < timeout; usec += 32 * sck_period) {	// when timeout > 0, poll until byte is written
+			spi(cmd, res, 4);
 			r = res[3];
-			if	(r == cmd[3] && r != poll1 && r != poll2) {
+			if (r == cmd[3] && r != poll1 && r != poll2) {
 				break;
 			}
 		}

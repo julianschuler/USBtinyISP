@@ -16,14 +16,19 @@
 # (at your option) any later version.
 # ======================================================================
 
-PROGRAMMER	= avrisp
-PORT		= COM42
+
+PROGRAMMER	= arduino
+PORT		= /dev/ttyACM0
+
+#PROGRAMMER	= usbtiny
+#PORT		= usb
+
 
 USBTINY		= ./usbtiny
 TARGET_ARCH	= -mmcu=attiny24
 OBJECTS		= main.o
 FLASH_CMD	= avrdude -p t24 -b 19200 -c $(PROGRAMMER) -P $(PORT) -U flash:w:main.hex
-FUSES_CMD	= avrdude -p t24 -b 19200 -c $(PROGRAMMER) -P $(PORT) -U hfuse:w:0xdf:m -U lfuse:w:0xef:m
+FUSES_CMD	= avrdude -p t24 -b 19200 -c $(PROGRAMMER) -P $(PORT) -U hfuse:w:0xd7:m -U lfuse:w:0xef:m
 STACK		= 32
 FLASH		= 2048
 SRAM		= 128
