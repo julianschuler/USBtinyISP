@@ -1,6 +1,4 @@
 # USBtinyISP
-#### IMPORTANT NOTE:
-#### The current PCB design should only be used for reference, a redesign is needed. I strongly advise not to rebuilt this project, until a new PCB design has been created removing the current flaws.
 ## Introduction
 The USBtinyISP is an USB AVR ISP programmer, capable of writing and reading flash, EEPROM and fuse bits of Atmel AVRs. It is based on the [USBtiny project](https://dicks.home.xs4all.nl/avr/usbtiny/index.html) by Dick Streefland and can be used as the [USBtinyISP](https://www.adafruit.com/product/46) by Adafruit, therefore it works great with avrdude und AVRStudio!
 
@@ -16,6 +14,5 @@ Other than that the USBtinyISP just has to plugged into an USB port and connecte
 This project is licensed under GNU GPLv3, see [`LICENSE.txt`](LICENSE.txt) for further information.
 
 ## Todo
-- Redesign PCB
 - Add build instructions
 - Add pictures
